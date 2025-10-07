@@ -10,6 +10,7 @@ env:
   TF_VAR_webapp_name: "${{ github.actor }}-ttt-app"
   TF_VAR_image_registry_url: "https://ghcr.io"
   TF_VAR_image_registry_username: ${{ github.actor }}
+  TF_VAR_image_registry_password: ${{ secrets.CR_PAT}}
 
 jobs:
   setup-up-azure-resources:
