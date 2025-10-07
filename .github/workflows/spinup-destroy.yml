@@ -4,11 +4,12 @@ on:
     types: [labeled]
 
 env:
-  IMAGE_REGISTRY_URL: ghcr.io
-  AZURE_RESOURCE_GROUP: cd-with-actions
-  AZURE_APP_PLAN: actions-ttt-deployment
-  AZURE_LOCATION: '"East US"'
-  AZURE_WEBAPP_NAME: kmekaumput-ttt-app
+  TF_VAR_location: "australiasoutheast"
+  TF_VAR_resource_group_name: "cd-with-actions"
+  TF_VAR_app_plan: "actions-ttt-deployment"
+  TF_VAR_webapp_name: "${{ github.actor }}-ttt-app"
+  TF_VAR_image_registry_url: "https://ghcr.io"
+  TF_VAR_image_registry_username: ${{ github.actor }}
 
 jobs:
   setup-up-azure-resources:
@@ -18,30 +19,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure login
-        uses: azure/login@v2
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          terraform_version: 1.13.5
 
-      - name: Create Azure resource group
-        if: success()
-        run: |
-          az group create --location ${{env.AZURE_LOCATION}} --name ${{env.AZURE_RESOURCE_GROUP}} --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        run: terraform -chdir=infra init
 
-      - name: Create Azure app service plan
-        if: success()
-        run: |
-          az appservice plan create --resource-group ${{env.AZURE_RESOURCE_GROUP}} --name ${{env.AZURE_APP_PLAN}} --is-linux --sku F1 --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+      # Checks that all Terraform configuration files adhere to a canonical format
+      - name: Terraform Format
+        run: terraform fmt -chdir=infra -check
 
-      - name: Create webapp resource
-        if: success()
-        run: |
-          az webapp create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --plan ${{ env.AZURE_APP_PLAN }} --name ${{ env.AZURE_WEBAPP_NAME }}  --deployment-container-image-name nginx --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+      # Generates an execution plan for Terraform
+      - name: Terraform Plan
+        run: terraform plan -chdir=infra -input=false
 
-      - name: Configure webapp to use GHCR
-        if: success()
-        run: |
-          az webapp config container set --docker-custom-image-name nginx --docker-registry-server-password ${{secrets.CR_PAT}} --docker-registry-server-url https://${{env.IMAGE_REGISTRY_URL}} --docker-registry-server-user ${{github.actor}} --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+        # On push to "main", build or change infrastructure according to Terraform configuration files
+        # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+      - name: Terraform Apply
+        run: terraform apply -chdir=infra -auto-approve -input=false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state
+          path: infra/terraform.tfstate
+
 
   destroy-azure-resources:
     runs-on: ubuntu-latest
@@ -52,12 +56,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Azure login
-        uses: azure/login@v2
+      - uses: actions/download-artifact@v4
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          name: terraform-state
+          path: infra/terraform.tfstate
 
-      - name: Destroy Azure environment
-        if: success()
-        run: |
-          az group delete --name ${{env.AZURE_RESOURCE_GROUP}} --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}} --yes
+      - name: Terraform Destroy
+        run: terraform destroy -chdir=infra -auto-approve -input=false

@@ -40,3 +40,20 @@ Thumbs.db
 #########
 node_modules/
 public/*.js
+
+# Terraform #
+######################
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+*.tfvars
+*.tfvars.json
+*secrets.json
+.terraform.lock.hcl
