@@ -64,6 +64,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Setup Terraform
+      - name: Terraform setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.13.3
+
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        run: terraform init
+
       - name: Terraform Destroy
         run: |
           cd infra
