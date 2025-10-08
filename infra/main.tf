@@ -7,7 +7,13 @@ terraform {
       version = "=4.47.0"
     }
   }
+
+  backend "s3" {
+    bucket = "kmekaumput-terraform-states"
+    key    = "skill-deploy-to-azure/terraform.tfstate"
+  }
 }
+
 
 provider "azurerm" {
 
@@ -36,13 +42,12 @@ resource "azurerm_linux_web_app" "webapp" {
   location            = azurerm_service_plan.webapp.location
   service_plan_id     = azurerm_service_plan.webapp.id
 
-
   site_config {
-    always_on = false
+      always_on = false
 
     application_stack {
-      docker_image_name        = "nginx"
-      docker_registry_url      = var.image_registry_url
+      docker_image_name = "nginx"
+      docker_registry_url = var.image_registry_url
       docker_registry_username = var.image_registry_username
       docker_registry_password = var.image_registry_password
     }
