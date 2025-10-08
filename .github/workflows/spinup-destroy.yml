@@ -55,12 +55,6 @@ jobs:
           cd infra
           terraform apply -auto-approve -input=false
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: terraform-state
-          path: infra/terraform.tfstate
-
-
   destroy-azure-resources:
     runs-on: ubuntu-latest
 
@@ -69,11 +63,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: terraform-state
-          path: infra/terraform.tfstate
 
       - name: Terraform Destroy
         run: |
